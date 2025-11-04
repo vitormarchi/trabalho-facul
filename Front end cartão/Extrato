@@ -1,0 +1,158 @@
+{
+  "name": "bank-card-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.0.4",
+    "vite": "^5.2.0"
+  }
+}
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './style.css';
+
+ReactDOM.createRoot(document.getElementByI
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+interface Transaction {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  category: string;
+  type: string;
+}
+
+export default function App() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [summary, setSummary] = useState<any>({});
+  const [newTx, setNewTx] = useState({ description: '', amount: '', date: '', category: '' });
+  const API = 'http://localhost:4000';
+
+  async function loadData() {
+    const txRes = await axios.get(`${API}/transactions`);
+    const sumRes = await axios.get(`${API}/summary`);
+    setTransactions(txRes.data);
+    setSummary(sumRes.data);
+  }
+
+  useEffect(() => { loadData(); }, []);
+
+  async function addTransaction(e: React.FormEvent) {
+    e.preventDefault();
+    await axios.post(`${API}/transactions`, {
+      ...newTx,
+      amount: parseFloat(newTx.amount)
+    });
+    setNewTx({ description: '', amount: '', date: '', category: '' });
+    loadData();
+  }
+
+  return (
+    <div className="container">
+      <h1>💳 Cartão - Extrato Bancário</h1>
+
+      <div className="card">
+        <h2>Saldo Atual: R$ {summary.balance?.toFixed(2) || 0}</h2>
+        <p>Créditos: R$ {summary.totalCredit?.toFixed(2) || 0} | Débitos: R$ {summary.totalDebit?.toFixed(2) || 0}</p>
+      </div>
+
+      <form onSubmit={addTransaction} className="card">
+        <h3>Adicionar Transação</h3>
+        <input placeholder="Descrição" value={newTx.description} onChange={e => setNewTx({ ...newTx, description: e.target.value })} />
+        <input placeholder="Valor" type="number" value={newTx.amount} onChange={e => setNewTx({ ...newTx, amount: e.target.value })} />
+        <input type="date" value={newTx.date} onChange={e => setNewTx({ ...newTx, date: e.target.value })} />
+        <input placeholder="Categoria" value={newTx.category} onChange={e => setNewTx({ ...newTx, category: e.target.value })} />
+        <button type="submit">Salvar</button>
+      </form>
+
+      <div className="card">
+        <h3>Extrato de Transações</h3>
+        {transactions.length === 0 && <p>Nenhuma transação registrada.</p>}
+        <ul>
+          {transactions.map(tx => (
+            <li key={tx.id}>
+              <strong>{tx.description}</strong> ({tx.category})  
+              <span className={tx.amount >= 0 ? 'credit' : 'debit'}>
+                {tx.amount >= 0 ? '+' : '-'} R$ {Math.abs(tx.amount).toFixed(2)}
+              </span>
+              <div className="date">{tx.date}</div>
+            </li>
+          ))}
+        </ul>
+        <a className="export" href={`${API}/export`} target="_blank">⬇️ Exportar CSV</a>
+      </div>
+    </div>
+  );
+}
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #0e1625;
+  color: #e8edf2;
+  margin: 0;
+  padding: 20px;
+}
+.container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.card {
+  background: #141f33;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
+}
+input {
+  display: block;
+  width: 100%;
+  margin: 5px 0;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+}
+button {
+  padding: 8px 16px;
+  background-color: #1e90ff;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover { background-color: #1875d1; }
+.credit { color: #2ecc71; }
+.debit { color: #e74c3c; }
+ul { list-style: none; padding: 0; }
+li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.date {
+  font-size: 12px;
+  color: #a0acb8;
+}
+.export {
+  display: inline-block;
+  margin-top: 10px;
+  color: #1e90ff;
+  text-decoration: none;
+}
+.export:hover { text-decoration: underline; }
